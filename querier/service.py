@@ -45,9 +45,10 @@ class QuerierInstance:
 
 
 def main():
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(levelname)-8s %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
     logging.Formatter.converter = time.gmtime  # UTC time
 
     parser = argparse.ArgumentParser(

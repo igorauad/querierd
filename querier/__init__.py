@@ -22,7 +22,6 @@ import logging
 import os
 import socket
 import struct
-import syslog
 import threading
 import time
 from .packets import (IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery,
@@ -44,6 +43,8 @@ class Querier:
     def __init__(self, ifname, interval, msg_type, group, ttl):
         if os.getuid() != 0:
             raise RuntimeError('You must be root to create a Querier.')
+        self.logger = logging.getLogger(f'[{ifname} querier]')
+        self.logger.info('Creating querier')
         self.interval = interval
         self.group = group
         self.ttl = ttl
@@ -79,7 +80,6 @@ class Querier:
         self.listener = None
         self.elected = True
         self.stop = threading.Event()
-        syslog.openlog('querierd')
 
     def build_v1_query_packet(self):
         igmp = IGMPv2Packet()
@@ -180,7 +180,8 @@ class Querier:
         ip.data = igmp.pack()
 
     def run(self):
-        syslog.syslog('Querier starting. %s' % self.source_address)
+        self.logger.info(
+            f'Querier starting: source_address={self.source_address}')
         wait = 0.0
         timeout = 0.1
         self.listener = QueryListener(self.source_address)
@@ -198,25 +199,22 @@ class Querier:
 
             elapsed = self.listener.elapsed()
             if self.elected:
-                logging.info("Sending %s" % (self.msg_type))
+                self.logger.info(f"Sending {self.msg_type}")
                 self.socket.sendto(self.packet.pack(), (self.dst, 0))
                 if elapsed < self.interval:
                     self.elected = False
-                    syslog.syslog('Lost querier election. Pausing. %s' %
-                                  self.source_address)
+                    self.logger.error('Lost querier election. Pausing.')
             else:
                 if (elapsed > 2 * self.interval):
-                    syslog.syslog('Won querier election. Resuming. %s' %
-                                  self.source_address)
+                    self.logger.error('Won querier election. Resuming. ')
                     self.elected = True
             if not self.listener.thread.is_alive():
-                syslog.syslog('Listener thread died.  Quitting. %s' %
-                              self.source_address)
+                self.logger.error('Listener thread died. Quitting.')
                 break
 
         self.listener.stop.set()
         self.socket.close()
-        syslog.syslog('Received SIGTERM.  Quitting. %s' % self.source_address)
+        self.logger.error('Received SIGTERM. Quitting.')
 
 
 class QueryListener:

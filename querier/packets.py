@@ -16,7 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with QuerierD.  If not, see <http://www.gnu.org/licenses/>.
-
+import logging
 import socket
 import struct
 
@@ -159,7 +159,7 @@ class IGMPv3MembershipQuery(Packet):
 
     @group.setter
     def group(self, addr):
-        print("Set group to %s" % (addr))
+        logging.info("Set group to %s" % (addr))
         self._group = struct.unpack("!I", socket.inet_aton(addr))[0]
 
     # Number of sources
@@ -198,7 +198,7 @@ class IGMPv3Report(Packet):
 
     @group.setter
     def group(self, addr):
-        print("Set group to %s" % (addr))
+        logging.info("Set group to %s" % (addr))
         self._group_record = struct.unpack("!I", socket.inet_aton(addr))[0]
 
 

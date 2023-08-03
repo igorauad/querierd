@@ -17,13 +17,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with QuerierD.  If not, see <http://www.gnu.org/licenses/>.
-
-from . import Querier
+import argparse
+import logging
+import os
+import sys
 import threading
 import time
-import sys
-import argparse
-import os
+
+from . import Querier
 
 
 class QuerierInstance:
@@ -44,6 +45,11 @@ class QuerierInstance:
 
 
 def main():
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(levelname)-8s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.Formatter.converter = time.gmtime  # UTC time
+
     parser = argparse.ArgumentParser(
         description='Queries multicast group periodically for IGMP snooping')
 
@@ -86,7 +92,7 @@ def main():
     args = parser.parse_args()
 
     if os.getuid() != 0:
-        print('You must be root to run a querier.')
+        logging.error('You must be root to run a querier.')
         sys.exit(1)
 
     debug = args.debug
@@ -101,7 +107,7 @@ def main():
     try:
         while True:
             if interface not in processes:
-                print('adding new querier: %s' % interface)
+                logging.info('adding new querier: %s' % interface)
                 processes[interface] = QuerierInstance(interface, interval,
                                                        msg_type, group, ttl)
                 time.sleep(wait)
@@ -109,7 +115,7 @@ def main():
         pass
 
     if debug:
-        print("stopping threads")
+        logging.info("stopping threads")
     for proc in processes:
         processes[proc].stop()
 
@@ -118,7 +124,7 @@ def main():
         time.sleep(0.1)
 
     if debug:
-        print("threads stopped")
+        logging.info("threads stopped")
 
     sys.exit(0)
 

@@ -18,6 +18,7 @@
 # along with QuerierD.  If not, see <http://www.gnu.org/licenses/>.
 
 import fcntl
+import logging
 import os
 import socket
 import struct
@@ -197,7 +198,7 @@ class Querier:
 
             elapsed = self.listener.elapsed()
             if self.elected:
-                print("Send %s" % (self.msg_type))
+                logging.info("Sending %s" % (self.msg_type))
                 self.socket.sendto(self.packet.pack(), (self.dst, 0))
                 if elapsed < self.interval:
                     self.elected = False
@@ -253,6 +254,8 @@ class QueryListener:
                     self.lock.acquire()
                     self._timestamp = time.time()
                     self.lock.release()
+            else:
+                logging.warning(f"Unexpected IGMP packet type {hex(data[20])}")
         self.socket.close()
 
     def elapsed(self):

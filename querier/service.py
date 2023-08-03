@@ -51,6 +51,7 @@ def main():
     parser.add_argument(
         '-i',
         '--interface',
+        nargs='+',
         help='Net interface through which to send IGMP packets \
                         (required)',
         required=True)
@@ -98,7 +99,7 @@ def main():
 
     debug = args.debug
     interval = args.interval
-    interface = args.interface
+    interfaces = args.interface
     msg_type = args.type
     group = args.group
     ttl = args.ttl
@@ -107,11 +108,11 @@ def main():
 
     try:
         while True:
-            if interface not in processes:
-                logging.info('adding new querier: %s' % interface)
-                processes[interface] = QuerierInstance(interface, interval,
-                                                       msg_type, group, ttl)
-                time.sleep(wait)
+            for interface in interfaces:
+                if interface not in processes:
+                    processes[interface] = QuerierInstance(
+                        interface, interval, msg_type, group, ttl)
+            time.sleep(wait)
     except KeyboardInterrupt:
         pass
 

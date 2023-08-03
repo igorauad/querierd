@@ -2,8 +2,10 @@
 
 from setuptools import setup
 
+from querier import __version__
+
 setup(name='querierd',
-      version=0.2,
+      version=__version__,
       description='IGMP querier service',
       author='Marc Culler',
       author_email='marc.culler@gmail.com',

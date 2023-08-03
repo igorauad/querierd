@@ -29,7 +29,7 @@ from .packets import (IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery,
                       IGMPv3Report, IGMPType)
 
 SIOCGIFADDR = 0x8915
-version = '0.1'
+__version__ = '0.3'
 __all__ = ['Querier']
 query_group = '224.0.0.1'
 leave_group = '224.0.0.2'

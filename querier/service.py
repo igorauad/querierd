@@ -57,7 +57,7 @@ def main():
     parser.add_argument(
         '-t',
         '--type',
-        choices=['v1_query', 'v2_query', 'v3_query', 'v2_report'],
+        choices=['v1_query', 'v2_query', 'v3_query', 'v2_report', 'v3_report'],
         default='v3_query',
         help='Target IGMP message type to transmit \
                         (default: v3_query)')

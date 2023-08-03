@@ -70,6 +70,8 @@ class Querier:
             self.build_v3_query_packet()
         elif (msg_type == "v2_report"):
             self.build_v2_report()
+        elif (msg_type == "v3_report"):
+            self.build_v3_report()
         else:
             raise ValueError("IGMP message type not supported")
 
@@ -160,6 +162,21 @@ class Querier:
         ip.dst = self.group
         ip.data = igmp.pack()
 
+    def build_v3_report(self):
+        assert (self.group
+                is not None), "Group address undefined for v3_report"
+        igmp = IGMPv3Report()
+        igmp.group = self.group
+        igmp.n_src = 1
+        # igmp.max_response_time = 100
+
+        self.packet = ip = IPv4Packet()
+        self.dst = report_group
+        ip.protocol = socket.IPPROTO_IGMP
+        ip.ttl = self.ttl
+        ip.src = self.source_address
+        ip.dst = report_group
+        ip.data = igmp.pack()
 
     def run(self):
         syslog.syslog('Querier starting. %s' % self.source_address)

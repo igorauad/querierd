@@ -45,12 +45,6 @@ class QuerierInstance:
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S')
-    logging.Formatter.converter = time.gmtime  # UTC time
-
     parser = argparse.ArgumentParser(
         description='Queries multicast group periodically for IGMP snooping')
 
@@ -91,6 +85,12 @@ def main():
                         action='store_true')
 
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='%(asctime)s %(levelname)-8s %(name)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.Formatter.converter = time.gmtime  # UTC time
 
     if os.getuid() != 0:
         logging.error('You must be root to run a querier.')

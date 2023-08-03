@@ -198,6 +198,9 @@ class Querier:
                 wait = 0.0
 
             elapsed = self.listener.elapsed()
+            self.logger.debug(
+                'Elapsed since last query: {:.2f} sec; Target interval: {:.2f}'
+                .format(elapsed, self.interval))
             if self.elected:
                 self.logger.info(f"Sending {self.msg_type}")
                 self.socket.sendto(self.packet.pack(), (self.dst, 0))
@@ -208,6 +211,7 @@ class Querier:
                 if (elapsed > 2 * self.interval):
                     self.logger.error('Won querier election. Resuming. ')
                     self.elected = True
+
             if not self.listener.thread.is_alive():
                 self.logger.error('Listener thread died. Quitting.')
                 break
@@ -225,7 +229,7 @@ class QueryListener:
 
     def __init__(self, address):
         self.address = self._ip_as_int(address)
-        self._timestamp = 0  # the timestamp is shared data
+        self._timestamp = time.time()  # the timestamp is shared data
         self.socket = sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                            socket.IPPROTO_IGMP)
         sock.bind(('224.0.0.1', 0))
@@ -253,7 +257,8 @@ class QueryListener:
                     self._timestamp = time.time()
                     self.lock.release()
             else:
-                logging.warning(f"Unexpected IGMP packet type {hex(data[20])}")
+                logging.debug(f"Unexpected IGMP packet type {hex(data[20])}")
+
         self.socket.close()
 
     def elapsed(self):

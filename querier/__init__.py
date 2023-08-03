@@ -28,6 +28,7 @@ from .packets import (IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery,
                       IGMPv3Report, IGMPType)
 
 SIOCGIFADDR = 0x8915
+SO_BINDTODEVICE = 25
 __version__ = '0.3'
 __all__ = ['Querier']
 query_group = '224.0.0.1'
@@ -45,6 +46,7 @@ class Querier:
             raise RuntimeError('You must be root to create a Querier.')
         self.logger = logging.getLogger(f'[{ifname} querier]')
         self.logger.info('Creating querier')
+        self.ifname = ifname
         self.interval = interval
         self.group = group
         self.ttl = ttl
@@ -184,7 +186,8 @@ class Querier:
             f'Querier starting: source_address={self.source_address}')
         wait = 0.0
         timeout = 0.1
-        self.listener = QueryListener(self.source_address)
+        self.listener = QueryListener(self.source_address, self.ifname,
+                                      self.logger)
 
         while True:
             if self.stop.is_set():
@@ -222,18 +225,22 @@ class Querier:
 
 
 class QueryListener:
-    """
-    Manages the IGMP querier election process.  The elapsed() method returns
-    the time since the last query packet from a higher priority device.
+    """Manages the IGMP querier election process.
+
+    The elapsed() method returns the time since the last query packet from a
+    higher priority device (with lower IP address).
+
     """
 
-    def __init__(self, address):
+    def __init__(self, address, ifname, logger):
         self.address = self._ip_as_int(address)
+        self.logger = logger
         self._timestamp = time.time()  # the timestamp is shared data
         self.socket = sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                            socket.IPPROTO_IGMP)
         sock.bind(('224.0.0.1', 0))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, SO_BINDTODEVICE, ifname.encode())
         sock.settimeout(0.5)  # timeout for stopping thread
         self.lock = threading.Lock()
         self.stop = threading.Event()
@@ -252,12 +259,14 @@ class QueryListener:
                 continue
 
             if data[20] == IGMPType['query']:
+                self.logger.debug(f"Received IGMP query from {address[0]}")
                 if self._ip_as_int(address[0]) < self.address:
                     self.lock.acquire()
                     self._timestamp = time.time()
                     self.lock.release()
             else:
-                logging.debug(f"Unexpected IGMP packet type {hex(data[20])}")
+                self.logger.debug(
+                    f"Unexpected IGMP packet type {hex(data[20])}")
 
         self.socket.close()
 

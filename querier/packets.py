@@ -19,7 +19,6 @@
 
 import socket
 import struct
-import sys
 
 IGMP_type = {
     'query': 0x11,
@@ -28,14 +27,6 @@ IGMP_type = {
     'v3_report': 0x22,
     'leave': 0x17
 }
-
-# OS X (and FreeBSD) require the length field of an IP packet to
-# be in **host order**.  (?????)
-
-if sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
-    LENGTH = lambda x: socket.htons(x)
-else:
-    LENGTH = lambda x: x
 
 
 class Packet(object):
@@ -47,7 +38,7 @@ class Packet(object):
     def __init__(self):
         self.format = '!' + ''.join([self.formats[f] for f in self.fields])
         self.length = self.hdr_length = struct.calcsize(self.format)
-        self.length = LENGTH(self.length)
+        self.length = self.length
 
     def __str__(self):
         self.compute_checksum()
@@ -74,7 +65,7 @@ class Packet(object):
     @data.setter
     def data(self, data):
         self._data = str(data)
-        self.length = LENGTH(self.hdr_length + len(self._data))
+        self.length = self.hdr_length + len(self._data)
 
 
 class IGMPv2Packet(Packet):

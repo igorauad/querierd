@@ -20,7 +20,7 @@
 import socket
 import struct
 
-IGMP_type = {
+IGMPType = {
     'query': 0x11,
     'v1_report': 0x12,
     'v2_report': 0x16,
@@ -33,14 +33,16 @@ class Packet(object):
     """
     Base class for internet packets.
     """
-    _data = ''
+    _data = b''
 
     def __init__(self):
         self.format = '!' + ''.join([self.formats[f] for f in self.fields])
-        self.length = self.hdr_length = struct.calcsize(self.format)
-        self.length = self.length
+        self.hdr_length = struct.calcsize(self.format)
 
-    def __str__(self):
+    def __len__(self):
+        return self.hdr_length + len(self._data)
+
+    def pack(self):
         self.compute_checksum()
         return self.header() + self._data
 
@@ -63,9 +65,12 @@ class Packet(object):
         return self._data
 
     @data.setter
-    def data(self, data):
-        self._data = str(data)
-        self.length = self.hdr_length + len(self._data)
+    def data(self, data: bytes):
+        self._data = data
+
+    @property
+    def length(self):
+        return len(self)
 
 
 class IGMPv2Packet(Packet):
@@ -83,11 +88,11 @@ class IGMPv2Packet(Packet):
 
     @property
     def type(self):
-        return IGMP_type[self._type]
+        return IGMPType[self._type]
 
     @type.setter
     def type(self, typestr):
-        self._type = IGMP_type[typestr]
+        self._type = IGMPType[typestr]
 
     @property
     def max_response_time(self):
@@ -133,11 +138,11 @@ class IGMPv3MembershipQuery(Packet):
 
     @property
     def type(self):
-        return IGMP_type[self._type]
+        return IGMPType[self._type]
 
     @type.setter
     def type(self, typestr):
-        self._type = IGMP_type[typestr]
+        self._type = IGMPType[typestr]
 
     @property
     def max_response_time(self):
@@ -180,7 +185,7 @@ class IGMPv3Report(Packet):
         '_n_records': 'H',
         '_group_record': 'I'
     }
-    _type = IGMP_type['v3_report']
+    _type = IGMPType['v3_report']
     _reserved1 = 0
     checksum = 0
     _reserved2 = 0

@@ -25,7 +25,7 @@ import syslog
 import threading
 import time
 from .packets import (IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery,
-                      IGMPv3Report)
+                      IGMPv3Report, IGMPType)
 
 SIOCGIFADDR = 0x8915
 version = '0.1'
@@ -98,7 +98,7 @@ class Querier:
         ip.protocol = socket.IPPROTO_IGMP
         ip.ttl = self.ttl
         ip.src = self.source_address
-        ip.data = igmp
+        ip.data = igmp.pack()
 
     def build_v2_query_packet(self):
         igmp = IGMPv2Packet()
@@ -121,7 +121,7 @@ class Querier:
         ip.protocol = socket.IPPROTO_IGMP
         ip.ttl = self.ttl
         ip.src = self.source_address
-        ip.data = igmp
+        ip.data = igmp.pack()
 
     def build_v3_query_packet(self):
         igmp = IGMPv3MembershipQuery()
@@ -142,7 +142,7 @@ class Querier:
         ip.protocol = socket.IPPROTO_IGMP
         ip.ttl = self.ttl
         ip.src = self.source_address
-        ip.data = igmp
+        ip.data = igmp.pack()
 
     def build_v2_report(self):
         assert (self.group
@@ -158,7 +158,7 @@ class Querier:
         ip.ttl = self.ttl
         ip.src = self.source_address
         ip.dst = self.group
-        ip.data = igmp
+        ip.data = igmp.pack()
 
 
     def run(self):
@@ -181,7 +181,7 @@ class Querier:
             elapsed = self.listener.elapsed()
             if self.elected:
                 print("Send %s" % (self.msg_type))
-                self.socket.sendto(str(self.packet), (self.dst, 0))
+                self.socket.sendto(self.packet.pack(), (self.dst, 0))
                 if elapsed < self.interval:
                     self.elected = False
                     syslog.syslog('Lost querier election. Pausing. %s' %
@@ -231,7 +231,7 @@ class QueryListener:
             except socket.timeout:
                 continue
 
-            if ord(data[20]) == 17:  # make sure we got a query packet
+            if data[20] == IGMPType['query']:
                 if self._ip_as_int(address[0]) < self.address:
                     self.lock.acquire()
                     self._timestamp = time.time()

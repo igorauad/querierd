@@ -9,5 +9,4 @@ setup(name='querierd',
       author_email='marc.culler@gmail.com',
       url='http://www.math.uic.edu/~t3m',
       packages=['querier'],
-      install_requires=['netifaces>0.7']
-     )
+      install_requires=['netifaces>0.7'])

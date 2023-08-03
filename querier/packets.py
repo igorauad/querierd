@@ -17,31 +17,35 @@
 # You should have received a copy of the GNU General Public License
 # along with QuerierD.  If not, see <http://www.gnu.org/licenses/>.
 
-import struct, socket, time, sys
+import socket
+import struct
+import sys
 
 IGMP_type = {
-    'query'    : 0x11,
+    'query': 0x11,
     'v1_report': 0x12,
     'v2_report': 0x16,
     'v3_report': 0x22,
-    'leave'    : 0x17}
+    'leave': 0x17
+}
 
 # OS X (and FreeBSD) require the length field of an IP packet to
 # be in **host order**.  (?????)
 
 if sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
-    LENGTH = lambda x : socket.htons(x)
+    LENGTH = lambda x: socket.htons(x)
 else:
-    LENGTH = lambda x : x
+    LENGTH = lambda x: x
+
 
 class Packet(object):
     """
     Base class for internet packets.
     """
     _data = ''
+
     def __init__(self):
-        self.format = '!'+''.join([self.formats[f]
-                                   for f in self.fields])
+        self.format = '!' + ''.join([self.formats[f] for f in self.fields])
         self.length = self.hdr_length = struct.calcsize(self.format)
         self.length = LENGTH(self.length)
 
@@ -57,7 +61,7 @@ class Packet(object):
         self.checksum = 0
         values = [getattr(self, field) for field in self.fields]
         bytes = struct.pack(self.format, *values)
-        shorts = struct.unpack('!%dH'%(self.hdr_length/2), bytes)
+        shorts = struct.unpack('!%dH' % (self.hdr_length / 2), bytes)
         S = sum(shorts)
         S = ((S >> 16) + (S & 0xffff))
         S += (S >> 16)
@@ -66,15 +70,21 @@ class Packet(object):
     @property
     def data(self):
         return self._data
+
     @data.setter
     def data(self, data):
         self._data = str(data)
         self.length = LENGTH(self.hdr_length + len(self._data))
 
+
 class IGMPv2Packet(Packet):
     fields = ['_type', '_max_response_time', 'checksum', '_group']
-    formats = {'_type':'B', '_max_response_time':'B', 'checksum':'H',
-               '_group':'I'}
+    formats = {
+        '_type': 'B',
+        '_max_response_time': 'B',
+        'checksum': 'H',
+        '_group': 'I'
+    }
     _type = 0
     _max_response_time = 0
     checksum = 0
@@ -83,6 +93,7 @@ class IGMPv2Packet(Packet):
     @property
     def type(self):
         return IGMP_type[self._type]
+
     @type.setter
     def type(self, typestr):
         self._type = IGMP_type[typestr]
@@ -90,6 +101,7 @@ class IGMPv2Packet(Packet):
     @property
     def max_response_time(self):
         return self._max_response_time
+
     @max_response_time.setter
     def max_response_time(self, units):
         # time units are 100 milliseconds, in exponential form if > 128
@@ -98,17 +110,27 @@ class IGMPv2Packet(Packet):
     @property
     def group(self):
         return self._dst
+
     @group.setter
     def group(self, addr):
         self._group = struct.unpack("!I", socket.inet_aton(addr))[0]
 
 
 class IGMPv3MembershipQuery(Packet):
-    fields = ['_type', '_max_response_time', 'checksum', '_group',
-              '_resv_s_qrv', '_qqic', '_n_src', '_src_addr']
-    formats = {'_type':'B', '_max_response_time':'B', 'checksum':'H',
-               '_group':'I', '_resv_s_qrv':'B', '_qqic':'B', '_n_src':'H',
-               '_src_addr':'I'}
+    fields = [
+        '_type', '_max_response_time', 'checksum', '_group', '_resv_s_qrv',
+        '_qqic', '_n_src', '_src_addr'
+    ]
+    formats = {
+        '_type': 'B',
+        '_max_response_time': 'B',
+        'checksum': 'H',
+        '_group': 'I',
+        '_resv_s_qrv': 'B',
+        '_qqic': 'B',
+        '_n_src': 'H',
+        '_src_addr': 'I'
+    }
     _type = 0
     _max_response_time = 0
     checksum = 0
@@ -121,6 +143,7 @@ class IGMPv3MembershipQuery(Packet):
     @property
     def type(self):
         return IGMP_type[self._type]
+
     @type.setter
     def type(self, typestr):
         self._type = IGMP_type[typestr]
@@ -128,6 +151,7 @@ class IGMPv3MembershipQuery(Packet):
     @property
     def max_response_time(self):
         return self._max_response_time
+
     @max_response_time.setter
     def max_response_time(self, units):
         # time units are 100 milliseconds, in exponential form if > 128
@@ -136,49 +160,69 @@ class IGMPv3MembershipQuery(Packet):
     @property
     def group(self):
         return socket.inet_ntoa(self._dst)
+
     @group.setter
     def group(self, addr):
-        print("Set group to %s" %(addr))
+        print("Set group to %s" % (addr))
         self._group = struct.unpack("!I", socket.inet_aton(addr))[0]
 
     # Number of sources
     @property
     def n_src(self):
         return self._n_src
+
     @type.setter
     def n_src(self, n_src):
         self._n_src = n_src
 
 
 class IGMPv3Report(Packet):
-    fields = ['_type', '_reserved1', 'checksum', '_reserved2', '_n_records',
-              '_group_record']
-    formats = {'_type':'B', '_reserved1':'B', 'checksum':'H', '_reserved2':'H',
-               '_n_records':'H', '_group_record':'I'}
-    _type         = IGMP_type['v3_report']
-    _reserved1    = 0
-    checksum      = 0
-    _reserved2    = 0
-    _n_records    = 1
+    fields = [
+        '_type', '_reserved1', 'checksum', '_reserved2', '_n_records',
+        '_group_record'
+    ]
+    formats = {
+        '_type': 'B',
+        '_reserved1': 'B',
+        'checksum': 'H',
+        '_reserved2': 'H',
+        '_n_records': 'H',
+        '_group_record': 'I'
+    }
+    _type = IGMP_type['v3_report']
+    _reserved1 = 0
+    checksum = 0
+    _reserved2 = 0
+    _n_records = 1
     _group_record = 0
 
     @property
     def group(self):
         return socket.inet_ntoa(self._group_record)
+
     @group.setter
     def group(self, addr):
-        print("Set group to %s" %(addr))
+        print("Set group to %s" % (addr))
         self._group_record = struct.unpack("!I", socket.inet_aton(addr))[0]
 
 
-
 class IPv4Packet(Packet):
-    fields = ['version_ihl', 'tos', 'length', '_id',
-              'flags_offset', '_ttl', '_protocol', 'checksum',
-              '_src', '_dst']
-    formats = {'version_ihl':'B', 'tos':'B', 'length':'H',
-               '_id':'H', 'flags_offset':'H', '_ttl':'B',
-               '_protocol':'B', 'checksum':'H', '_src':'I', '_dst':'I'}
+    fields = [
+        'version_ihl', 'tos', 'length', '_id', 'flags_offset', '_ttl',
+        '_protocol', 'checksum', '_src', '_dst'
+    ]
+    formats = {
+        'version_ihl': 'B',
+        'tos': 'B',
+        'length': 'H',
+        '_id': 'H',
+        'flags_offset': 'H',
+        '_ttl': 'B',
+        '_protocol': 'B',
+        'checksum': 'H',
+        '_src': 'I',
+        '_dst': 'I'
+    }
     version_ihl = 0x45
     tos = 0
     _id = 0
@@ -192,6 +236,7 @@ class IPv4Packet(Packet):
     @property
     def protocol(self):
         return self._protocol
+
     @protocol.setter
     def protocol(self, p):
         self._protocol = p
@@ -199,6 +244,7 @@ class IPv4Packet(Packet):
     @property
     def ttl(self):
         return self._ttl
+
     @protocol.setter
     def ttl(self, ttl_value):
         self._ttl = ttl_value
@@ -206,6 +252,7 @@ class IPv4Packet(Packet):
     @property
     def ident(self):
         return self._id
+
     @protocol.setter
     def ident(self, id_value):
         self._ttl = id_value
@@ -213,6 +260,7 @@ class IPv4Packet(Packet):
     @property
     def src(self):
         return self._src
+
     @protocol.setter
     def src(self, addr):
         self._src = struct.unpack("!I", socket.inet_aton(addr))[0]
@@ -220,6 +268,7 @@ class IPv4Packet(Packet):
     @property
     def dst(self):
         return self._dst
+
     @protocol.setter
     def dst(self, addr):
         self._dst = struct.unpack("!I", socket.inet_aton(addr))[0]

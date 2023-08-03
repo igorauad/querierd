@@ -17,36 +17,37 @@
 # You should have received a copy of the GNU General Public License
 # along with QuerierD.  If not, see <http://www.gnu.org/licenses/>.
 
+import fcntl
 import os
-import socket, fcntl
-import time
+import socket
 import struct
-import threading
 import syslog
-from .packets import IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery, IGMPv3Report
+import threading
+import time
+from .packets import (IPv4Packet, IGMPv2Packet, IGMPv3MembershipQuery,
+                      IGMPv3Report)
 
-
-SIOCGIFADDR    = 0x8915
-version        = '0.1'
-__all__        = ['Querier']
-query_group    = '224.0.0.1'
-leave_group    = '224.0.0.2'
-report_group   = '224.0.0.22' # used by v3 reports only
+SIOCGIFADDR = 0x8915
+version = '0.1'
+__all__ = ['Querier']
+query_group = '224.0.0.1'
+leave_group = '224.0.0.2'
+report_group = '224.0.0.22'  # used by v3 reports only
 
 
 class Querier:
     """
     Sends an IGMP query packet at a specified time interval (in seconds).
     """
+
     def __init__(self, ifname, interval, msg_type, group, ttl):
         if os.getuid() != 0:
             raise RuntimeError('You must be root to create a Querier.')
-        self.interval       = interval
-        self.group          = group
-        self.ttl            = ttl
-        self.msg_type       = msg_type
-        self.socket = sock = socket.socket(socket.AF_INET,
-                                           socket.SOCK_RAW,
+        self.interval = interval
+        self.group = group
+        self.ttl = ttl
+        self.msg_type = msg_type
+        self.socket = sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                            socket.IPPROTO_RAW)
         time.sleep(1)  # Can't set options too soon (???)
         sock.settimeout(5)
@@ -54,7 +55,7 @@ class Querier:
 
         # Get the IP address of the chosen interface
         ifr = fcntl.ioctl(sock.fileno(), SIOCGIFADDR,
-                    struct.pack('256s', ifname.encode()))
+                          struct.pack('256s', ifname.encode()))
         self.source_address = source_address = socket.inet_ntoa(ifr[20:24])
 
         # Bind
@@ -81,23 +82,23 @@ class Querier:
         igmp = IGMPv2Packet()
         igmp.type = 'query'
         # NOTE: max_response_time should be 0 for a v1 query
-        #igmp.max_response_time = 100
+        # igmp.max_response_time = 100
 
         self.packet = ip = IPv4Packet()
 
         # Group-specific query
         if (self.group is not None):
             igmp.group = self.group
-            self.dst   = self.group
-            ip.dst     = self.group
+            self.dst = self.group
+            ip.dst = self.group
         else:
-            self.dst   = query_group
-            ip.dst     = query_group
+            self.dst = query_group
+            ip.dst = query_group
 
         ip.protocol = socket.IPPROTO_IGMP
-        ip.ttl      = self.ttl
-        ip.src      = self.source_address
-        ip.data     = igmp
+        ip.ttl = self.ttl
+        ip.src = self.source_address
+        ip.data = igmp
 
     def build_v2_query_packet(self):
         igmp = IGMPv2Packet()
@@ -111,53 +112,54 @@ class Querier:
         # Group-specific query
         if (self.group is not None):
             igmp.group = self.group
-            self.dst   = self.group
-            ip.dst     = self.group
+            self.dst = self.group
+            ip.dst = self.group
         else:
-            self.dst   = query_group
-            ip.dst     = query_group
+            self.dst = query_group
+            ip.dst = query_group
 
         ip.protocol = socket.IPPROTO_IGMP
-        ip.ttl      = self.ttl
-        ip.src      = self.source_address
-        ip.data     = igmp
+        ip.ttl = self.ttl
+        ip.src = self.source_address
+        ip.data = igmp
 
     def build_v3_query_packet(self):
         igmp = IGMPv3MembershipQuery()
         igmp.type = 'query'
-        #igmp.max_response_time = 100
+        # igmp.max_response_time = 100
 
         self.packet = ip = IPv4Packet()
 
         # Group-specific query
         if (self.group is not None):
             igmp.group = self.group
-            self.dst   = self.group
-            ip.dst     = self.group
+            self.dst = self.group
+            ip.dst = self.group
         else:
             self.dst = query_group
-            ip.dst   = query_group
-
+            ip.dst = query_group
 
         ip.protocol = socket.IPPROTO_IGMP
-        ip.ttl      = self.ttl
-        ip.src      = self.source_address
-        ip.data     = igmp
+        ip.ttl = self.ttl
+        ip.src = self.source_address
+        ip.data = igmp
 
     def build_v2_report(self):
-        assert(self.group is not None), "Group address undefined for v2_report"
+        assert (self.group
+                is not None), "Group address undefined for v2_report"
         igmp = IGMPv2Packet()
         igmp.type = 'v2_report'
         igmp.group = self.group
-        #igmp.max_response_time = 100
+        # igmp.max_response_time = 100
 
         self.packet = ip = IPv4Packet()
-        self.dst    = report_group
+        self.dst = self.group
         ip.protocol = socket.IPPROTO_IGMP
-        ip.ttl      = self.ttl
-        ip.src      = self.source_address
-        ip.dst      = report_group
-        ip.data     = igmp
+        ip.ttl = self.ttl
+        ip.src = self.source_address
+        ip.dst = self.group
+        ip.data = igmp
+
 
     def run(self):
         syslog.syslog('Querier starting. %s' % self.source_address)
@@ -178,26 +180,25 @@ class Querier:
 
             elapsed = self.listener.elapsed()
             if self.elected:
-                print("Send %s" %(self.msg_type))
+                print("Send %s" % (self.msg_type))
                 self.socket.sendto(str(self.packet), (self.dst, 0))
                 if elapsed < self.interval:
                     self.elected = False
-                    syslog.syslog('Lost querier election. Pausing. %s'
-                                  % self.source_address)
+                    syslog.syslog('Lost querier election. Pausing. %s' %
+                                  self.source_address)
             else:
                 if (elapsed > 2 * self.interval):
-                    syslog.syslog('Won querier election. Resuming. %s'
-                                  % self.source_address)
+                    syslog.syslog('Won querier election. Resuming. %s' %
+                                  self.source_address)
                     self.elected = True
             if not self.listener.thread.is_alive():
-                syslog.syslog('Listener thread died.  Quitting. %s'
-                              % self.source_address)
+                syslog.syslog('Listener thread died.  Quitting. %s' %
+                              self.source_address)
                 break
 
         self.listener.stop.set()
         self.socket.close()
-        syslog.syslog('Received SIGTERM.  Quitting. %s'
-                      % self.source_address)
+        syslog.syslog('Received SIGTERM.  Quitting. %s' % self.source_address)
 
 
 class QueryListener:
@@ -205,19 +206,19 @@ class QueryListener:
     Manages the IGMP querier election process.  The elapsed() method returns
     the time since the last query packet from a higher priority device.
     """
+
     def __init__(self, address):
         self.address = self._ip_as_int(address)
         self._timestamp = 0  # the timestamp is shared data
-        self.socket = sock = socket.socket(socket.AF_INET,
-                                    socket.SOCK_RAW,
-                                    socket.IPPROTO_IGMP)
+        self.socket = sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
+                                           socket.IPPROTO_IGMP)
         sock.bind(('224.0.0.1', 0))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.settimeout(0.5)  # timeout for stopping thread
         self.lock = threading.Lock()
         self.stop = threading.Event()
         self.thread = thread = threading.Thread(target=self.listen)
-        #thread.daemon = True
+        # thread.daemon = True
         thread.start()
 
     def _ip_as_int(self, address):

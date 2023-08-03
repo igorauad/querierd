@@ -27,6 +27,7 @@ import os
 
 
 class QuerierInstance:
+
     def __init__(self, interface, interval, msg_type, group, ttl):
         self.interface = interface
         self.interval = interval
@@ -43,45 +44,57 @@ class QuerierInstance:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Querierd queries the multicast group in a certain interval to prevent IGMP snooping')
+    parser = argparse.ArgumentParser(
+        description='Queries multicast group periodically for IGMP snooping')
 
-    parser.add_argument('-i', '--interface',
-                        help='Net interface through which to send IGMP packets \
-                        (required)', required=True)
+    parser.add_argument(
+        '-i',
+        '--interface',
+        help='Net interface through which to send IGMP packets \
+                        (required)',
+        required=True)
 
-    parser.add_argument('-t', '--type', choices=['v1_query', 'v2_query',
-                                                 'v3_query', 'v2_report'],
-                        default='v3_query',
-                        help='Target IGMP message type to transmit \
+    parser.add_argument(
+        '-t',
+        '--type',
+        choices=['v1_query', 'v2_query', 'v3_query', 'v2_report'],
+        default='v3_query',
+        help='Target IGMP message type to transmit \
                         (default: v3_query)')
 
-    parser.add_argument('--interval', type=float,
+    parser.add_argument('--interval',
+                        type=float,
                         help='IGMP transmission interval (default: 5 secs)',
                         default=5.0)
 
-    parser.add_argument('--ttl', type=int,
-                        help='IP packet TTL (default: 1)', default=1)
+    parser.add_argument('--ttl',
+                        type=int,
+                        help='IP packet TTL (default: 1)',
+                        default=1)
 
-    parser.add_argument('-g', '--group', default=None,
+    parser.add_argument('-g',
+                        '--group',
+                        default=None,
                         help='Target group for group-specific messages \
                         (default: None)')
 
-    parser.add_argument('-d', '--debug',
+    parser.add_argument('-d',
+                        '--debug',
                         help='Enable debug mode (default: False)',
                         action='store_true')
 
     args = parser.parse_args()
 
     if os.getuid() != 0:
-        print 'You must be root to run a querier.'
+        print('You must be root to run a querier.')
         sys.exit(1)
 
-    debug     = args.debug
-    interval  = args.interval
+    debug = args.debug
+    interval = args.interval
     interface = args.interface
-    msg_type  = args.type
-    group     = args.group
-    ttl       = args.ttl
+    msg_type = args.type
+    group = args.group
+    ttl = args.ttl
     wait = 5.0  # network interface checking interval
     processes = {}
 
@@ -91,7 +104,6 @@ def main():
                 print('adding new querier: %s' % interface)
                 processes[interface] = QuerierInstance(interface, interval,
                                                        msg_type, group, ttl)
-                removed = []
                 time.sleep(wait)
     except KeyboardInterrupt:
         pass
@@ -109,6 +121,7 @@ def main():
         print("threads stopped")
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

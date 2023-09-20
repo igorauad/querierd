@@ -206,7 +206,11 @@ class Querier:
                 .format(elapsed, self.interval))
             if self.elected:
                 self.logger.info(f"Sending {self.msg_type}")
-                self.socket.sendto(self.packet.pack(), (self.dst, 0))
+                try:
+                    self.socket.sendto(self.packet.pack(), (self.dst, 0))
+                except socket.error as e:
+                    self.logger.error(f"Error sending packet: {e}")
+                    continue
                 if elapsed < self.interval:
                     self.elected = False
                     self.logger.error('Lost querier election. Pausing.')
